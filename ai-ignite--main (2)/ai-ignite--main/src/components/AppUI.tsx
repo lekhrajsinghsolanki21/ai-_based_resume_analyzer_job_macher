@@ -1,0 +1,1290 @@
+import { motion } from "motion/react";
+import { FileText, Upload, CheckCircle2, AlertCircle, Search, Trophy, Users, Zap, Mail, Github, Globe, Linkedin, Sparkles, BookOpen, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import React, { useState, useEffect, useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/src/store";
+import { 
+  setActiveTab, 
+  toggleDarkMode, 
+  setJobDetails, 
+  startAnalysis, 
+  updateProgress, 
+  completeAnalysis 
+} from "@/src/store/appSlice";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import mammoth from "mammoth/mammoth.browser";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+
+GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+
+// --- Navbar Component ---
+export function Navbar() {
+  const dispatch = useDispatch();
+  const activeTab = useSelector((state: RootState) => state.app.activeTab);
+  const isDark = useSelector((state: RootState) => state.app.isDark);
+
+  const tabs = [
+    { id: 'home', label: 'Home' },
+    { id: 'score', label: 'Resume Score' },
+    { id: 'about', label: 'About' },
+    { id: 'contact', label: 'Contact' },
+  ];
+
+  return (
+    <div className="sticky top-0 z-50 w-full">
+      {/* Marquee Section */}
+      <div className="bg-primary text-primary-foreground py-1 text-[9px] uppercase tracking-[0.25em] font-bold marquee-container">
+        <div className="marquee-content">
+          <span>AI-Powered Resume Screening</span>
+          <span>•</span>
+          <span>Instant Candidate Ranking</span>
+          <span>•</span>
+          <span>Advanced NLP Parsing</span>
+          <span>•</span>
+          <span>Startup-Grade Efficiency</span>
+          <span>•</span>
+        </div>
+        <div className="marquee-content" aria-hidden="true">
+          <span>AI-Powered Resume Screening</span>
+          <span>•</span>
+          <span>Instant Candidate Ranking</span>
+          <span>•</span>
+          <span>Advanced NLP Parsing</span>
+          <span>•</span>
+          <span>Startup-Grade Efficiency</span>
+          <span>•</span>
+        </div>
+      </div>
+
+      <nav className="glass border-b border-black/5 dark:border-white/5 px-6 py-3 flex items-center justify-between shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.45)]">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => dispatch(setActiveTab('home'))}>
+          <div className="bg-primary p-1.5 rounded-sm">
+            <Zap className="text-primary-foreground w-4 h-4" />
+          </div>
+          <span className="font-bold text-lg tracking-tighter hidden sm:block uppercase">IntelliScreen</span>
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-6 bg-background/50 rounded-full px-2 py-1 border border-black/10 dark:border-white/10">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => dispatch(setActiveTab(tab.id))}
+              className={cn(
+                "relative rounded-full px-2 sm:px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors hover:text-primary",
+                activeTab === tab.id ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute -bottom-[1.25rem] left-0 right-0 h-0.5 bg-primary"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => dispatch(toggleDarkMode())}
+          className="rounded-full"
+        >
+          {isDark ? "🌙" : "☀️"}
+        </Button>
+      </nav>
+    </div>
+  );
+}
+
+// --- Home Page ---
+export function Home({ onStart }: { onStart: () => void }) {
+  const carouselSlides = [
+    {
+      title: "Resume Screening Pipeline",
+      caption: "Parse uploaded resumes and align them against role requirements.",
+      image:
+        "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1400&q=60",
+      tint: "from-sky-900/75 via-blue-900/45 to-indigo-900/70",
+      glow: "shadow-sky-500/25",
+    },
+    {
+      title: "ATS Skill Matching",
+      caption: "Highlight matching skills, missing competencies, and fit percentage.",
+      image:
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=60",
+      tint: "from-violet-900/75 via-fuchsia-900/45 to-pink-900/70",
+      glow: "shadow-violet-500/25",
+    },
+    {
+      title: "Recruiter Dashboard",
+      caption: "Rank candidates faster with structured insights for global hiring.",
+      image:
+        "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1400&q=60",
+      tint: "from-emerald-900/70 via-teal-900/45 to-cyan-900/70",
+      glow: "shadow-emerald-500/25",
+    },
+  ];
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCarouselIndex((current) => (current + 1) % carouselSlides.length);
+    }, 3200);
+
+    return () => clearInterval(interval);
+  }, [carouselSlides.length]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6 py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl"
+      >
+        <Badge variant="outline" className="mb-5 px-4 py-1.5 rounded-full text-primary border-primary/40 bg-primary/5 uppercase tracking-widest text-[10px]">
+          Advanced NLP Engine
+        </Badge>
+        <h1 className="text-4xl sm:text-6xl font-black tracking-[calc(-0.05em)] mb-6 uppercase leading-[0.9]">
+          Intelligent Resume Screening
+        </h1>
+        <p className="text-base text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+          Upload resumes and job descriptions to get AI-based candidate rankings. 
+          Save hundreds of hours in manual screening with our high-performance matching engine.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Button size="lg" className="h-11 px-10 text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg shadow-primary/25 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/30 transition-all" onClick={onStart}>
+            Get Started
+          </Button>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            No setup needed - upload and rank in minutes
+          </p>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25, duration: 0.5 }}
+        className="mt-12 w-full max-w-5xl"
+      >
+        <Card className="glass rounded-2xl border-black/10 dark:border-white/10 p-4">
+          <div className="relative overflow-hidden rounded-xl min-h-[220px] md:min-h-[250px]">
+            <div className="absolute top-4 left-4 z-20 rounded-full bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-md">
+              Live Preview
+            </div>
+            <motion.div
+              key={carouselIndex}
+              initial={{ opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="absolute inset-0"
+            >
+              <img
+                src={carouselSlides[carouselIndex].image}
+                alt={carouselSlides[carouselIndex].title}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className={cn("absolute inset-0 bg-gradient-to-br", carouselSlides[carouselIndex].tint)} />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.18),transparent_45%)]" />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-5 md:p-6 text-left">
+                <p className="text-white text-lg md:text-xl font-black uppercase tracking-wider">
+                  {carouselSlides[carouselIndex].title}
+                </p>
+                <p className="text-white/85 text-xs md:text-sm font-medium mt-1">
+                  {carouselSlides[carouselIndex].caption}
+                </p>
+              </div>
+            </motion.div>
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            {carouselSlides.map((slide, i) => (
+              <button
+                key={slide.title}
+                onClick={() => setCarouselIndex(i)}
+                className={cn(
+                  "h-2.5 rounded-full transition-all",
+                  i === carouselIndex ? `w-8 bg-primary shadow-md ${slide.glow}` : "w-2.5 bg-muted-foreground/35 hover:bg-muted-foreground/55"
+                )}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </Card>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4, duration: 1 }}
+        className="mt-20 w-full max-w-6xl"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[
+            { icon: <Search className="w-5 h-5" />, title: "Smart Parsing", desc: "Extracts key skills and experience automatically." },
+            { icon: <Zap className="w-5 h-5" />, title: "Instant Ranking", desc: "Get real-time scores based on job relevance." },
+            { icon: <Users className="w-5 h-5" />, title: "Batch Processing", desc: "Screen hundreds of resumes in seconds." }
+          ].map((feature, i) => (
+            <Card
+              key={feature.title}
+              className="group glass rounded-2xl border-black/10 dark:border-white/10 px-5 py-4 text-left min-h-[165px] hover:border-primary/35 hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+            >
+              <CardHeader className="p-0 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25">
+                    {feature.icon}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    0{i + 1}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] leading-tight">
+                    {feature.title}
+                  </CardTitle>
+                  <CardDescription className="text-xs font-medium leading-relaxed text-muted-foreground">
+                    {feature.desc}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+
+// --- Confirmation Modal ---
+function ConfirmationModal({ isOpen, onClose, onConfirm, message }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; message: string }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass max-w-sm w-full p-8 rounded-none border border-primary/20 text-center"
+      >
+        <AlertCircle className="w-12 h-12 text-primary mx-auto mb-4" />
+        <h3 className="text-lg font-bold uppercase tracking-widest mb-2">Redirecting</h3>
+        <p className="text-xs font-medium text-muted-foreground mb-8 uppercase tracking-wider leading-relaxed">
+          {message}
+        </p>
+        <div className="flex gap-4">
+          <Button 
+            variant="outline" 
+            className="flex-1 rounded-none uppercase tracking-widest text-[10px] font-bold"
+            onClick={onClose}
+          >
+            No
+          </Button>
+          <Button 
+            className="flex-1 rounded-none uppercase tracking-widest text-[10px] font-bold"
+            onClick={onConfirm}
+          >
+            Yes
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// --- Resume Score Page ---
+export function ResumeScore() {
+  const MAX_FILES = 12;
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // ~5MB per file
+  const dispatch = useDispatch();
+  const { jobTitle, skillsRequired, location, isAnalyzing, progress, results } = useSelector((state: RootState) => state.app.analysis);
+  const [resumeFiles, setResumeFiles] = useState<File[]>([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const atsStandards = [
+    { min: 85, label: "Excellent Fit", note: "Ready for shortlist/interview." },
+    { min: 70, label: "Strong Fit", note: "Good alignment with minor gaps." },
+    { min: 55, label: "Moderate Fit", note: "Some relevant overlap, needs improvement." },
+    { min: 40, label: "Low Fit", note: "Notable skill/experience gaps." },
+    { min: 0, label: "Needs Major Work", note: "Resume requires substantial updates." },
+  ];
+  const getAtsRating = (score: number) =>
+    atsStandards.find((standard) => score >= standard.min) ?? atsStandards[atsStandards.length - 1];
+
+  const handleViewCourse = (url: string) => {
+    setPendingUrl(url);
+    setShowConfirm(true);
+  };
+
+  const confirmRedirect = () => {
+    window.open(pendingUrl, '_blank');
+    setShowConfirm(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files) as File[];
+      const allowedExtensions = new Set(["pdf", "docx", "txt"]);
+      const normalized = files.slice(0, MAX_FILES);
+      const validFiles = normalized.filter((file) => {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+        return allowedExtensions.has(ext) && file.size <= MAX_FILE_SIZE_BYTES;
+      });
+      const rejectedByLimit = Math.max(0, files.length - normalized.length);
+      const rejectedCount = normalized.length - validFiles.length;
+      setResumeFiles(validFiles);
+      if (rejectedCount > 0 || rejectedByLimit > 0) {
+        const reasons: string[] = [];
+        if (rejectedCount > 0) reasons.push(`invalid type or size (max ~5MB each)`);
+        if (rejectedByLimit > 0) reasons.push(`max ${MAX_FILES} files at once`);
+        setUploadError(`${rejectedCount + rejectedByLimit} file(s) rejected: ${reasons.join(", ")}. Allowed: DOCX, TXT, PDF.`);
+      } else {
+        setUploadError("");
+      }
+    }
+  };
+
+  const normalizeToken = (value: string) => value.trim().toLowerCase();
+  const toDisplayToken = (value: string) =>
+    value
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+  const extractRequiredSkills = (input: string) =>
+    input
+      .split(/,|\n|\/|\|/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+  const normalizeForMatch = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9+#.\s-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const includesPhrase = (content: string, phrase: string) => {
+    const normalizedContent = normalizeForMatch(content);
+    const normalizedPhrase = normalizeForMatch(phrase);
+    if (!normalizedPhrase) return false;
+    return normalizedContent.includes(normalizedPhrase);
+  };
+  const knownSkillAliases: Record<string, string[]> = {
+    react: ["reactjs", "react.js", "react js"],
+    typescript: ["ts"],
+    javascript: ["js", "ecmascript"],
+    "node.js": ["nodejs", "node js"],
+    sql: ["mysql", "postgres", "postgresql", "mssql"],
+    "tailwind css": ["tailwind", "tailwindcss"],
+    "ci/cd": ["cicd", "ci cd", "github actions", "jenkins"],
+    aws: ["amazon web services"],
+    docker: ["containerization", "containers"],
+    kubernetes: ["k8s"],
+    "machine learning": ["ml"],
+    "data visualization": ["tableau", "power bi", "matplotlib"],
+  };
+  const getSkillVariants = (skill: string) => {
+    const normalized = normalizeForMatch(skill);
+    const aliases = knownSkillAliases[normalized] ?? [];
+    return Array.from(new Set([normalized, ...aliases]));
+  };
+  const hasSkillInResume = (resumeSignal: string, skill: string) =>
+    getSkillVariants(skill).some((variant) => includesPhrase(resumeSignal, variant));
+  const parseYearsOfExperience = (resumeSignal: string) => {
+    const normalized = normalizeForMatch(resumeSignal);
+    const matches = Array.from(normalized.matchAll(/(\d{1,2})\+?\s*(years|year|yrs|yr)/g));
+    if (matches.length === 0) return 0;
+    return Math.max(...matches.map((match) => Number(match[1] ?? 0)));
+  };
+  const detectSoftSkills = (resumeSignal: string) => {
+    const softSkillSignals: Array<{ label: string; signals: string[] }> = [
+      { label: "Communication", signals: ["communication", "presented", "stakeholder"] },
+      { label: "Teamwork", signals: ["team", "collaborated", "cross-functional"] },
+      { label: "Ownership", signals: ["owned", "ownership", "led"] },
+      { label: "Adaptability", signals: ["adapted", "fast-paced", "dynamic"] },
+      { label: "Critical Thinking", signals: ["problem solving", "root cause", "debugged"] },
+      { label: "Stakeholder Management", signals: ["stakeholder", "client", "partner"] },
+    ];
+    return softSkillSignals
+      .filter((item) => item.signals.some((signal) => includesPhrase(resumeSignal, signal)))
+      .map((item) => item.label);
+  };
+  const readResumeSignal = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    try {
+      if (ext === "txt" || file.type.startsWith("text/")) {
+        const content = await file.text();
+        return `${file.name}\n${content.slice(0, 80000)}`;
+      }
+      if (ext === "pdf") {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const pdf = await getDocument({ data: bytes }).promise;
+        const pagesToRead = Math.min(pdf.numPages, 20);
+        const pageTexts: string[] = [];
+        for (let pageNo = 1; pageNo <= pagesToRead; pageNo += 1) {
+          const page = await pdf.getPage(pageNo);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ");
+          pageTexts.push(pageText);
+        }
+        return `${file.name}\n${pageTexts.join("\n").slice(0, 80000)}`;
+      }
+      if (ext === "docx") {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        return `${file.name}\n${result.value.slice(0, 80000)}`;
+      }
+    } catch {
+      return file.name;
+    }
+    return file.name;
+  };
+
+  const buildRoleKeywords = (title: string) => {
+    const normalizedTitle = normalizeToken(title);
+    const roleMap: Array<{ keyword: string; skills: string[] }> = [
+      { keyword: "frontend", skills: ["React", "TypeScript", "Tailwind CSS", "JavaScript", "Accessibility"] },
+      { keyword: "backend", skills: ["Node.js", "API Design", "SQL", "System Design", "Microservices"] },
+      { keyword: "full stack", skills: ["React", "Node.js", "TypeScript", "SQL", "Docker"] },
+      { keyword: "data", skills: ["Python", "SQL", "Machine Learning", "Pandas", "Data Visualization"] },
+      { keyword: "devops", skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Monitoring"] },
+      { keyword: "mobile", skills: ["React Native", "Android", "iOS", "State Management", "Performance Tuning"] },
+    ];
+    const matchedRole = roleMap.find((role) => normalizedTitle.includes(role.keyword));
+    return matchedRole?.skills ?? ["Communication", "Problem Solving", "Documentation", "Version Control"];
+  };
+  const buildRequiredSoftSkills = (title: string, requiredSkillText: string) => {
+    const normalizedTitle = normalizeToken(title);
+    const titleDriven = normalizedTitle.includes("manager") || normalizedTitle.includes("lead")
+      ? ["Communication", "Stakeholder Management", "Ownership", "Teamwork"]
+      : normalizedTitle.includes("senior")
+      ? ["Communication", "Ownership", "Critical Thinking", "Teamwork"]
+      : ["Communication", "Teamwork", "Adaptability", "Critical Thinking"];
+
+    const softFromInput = extractRequiredSkills(requiredSkillText)
+      .map((item) => toDisplayToken(item))
+      .filter((item) =>
+        ["Communication", "Teamwork", "Ownership", "Adaptability", "Stakeholder Management", "Critical Thinking"].includes(item)
+      );
+
+    return Array.from(new Set([...softFromInput, ...titleDriven]));
+  };
+  const globalMarketHints = useMemo(() => {
+    const roleSkills = buildRoleKeywords(jobTitle);
+    const marketFocus =
+      normalizeToken(location).includes("remote") || !location.trim()
+        ? "Remote Global"
+        : location;
+    return {
+      marketFocus,
+      roleSkills: roleSkills.slice(0, 6),
+      titleExamples: [
+        "Frontend Engineer (React + TypeScript)",
+        "Backend Engineer (Node.js + APIs)",
+        "Data Analyst (SQL + Python)",
+        "DevOps Engineer (AWS + Kubernetes)",
+      ],
+    };
+  }, [jobTitle, location]);
+
+  const addSuggestedSkill = (skill: string) => {
+    const current = skillsRequired
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (current.some((item) => normalizeToken(item) === normalizeToken(skill))) return;
+    const next = [...current, skill].join(", ");
+    dispatch(setJobDetails({ skillsRequired: next }));
+  };
+
+  const handleAnalyze = () => {
+    if (!jobTitle || !skillsRequired || resumeFiles.length === 0) return;
+    dispatch(startAnalysis());
+    setSelectedCandidateId(null);
+
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 5;
+      dispatch(updateProgress(currentProgress));
+      
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        (async () => {
+          const requiredSkills = extractRequiredSkills(skillsRequired);
+          const roleKeywords = buildRoleKeywords(jobTitle);
+          const baseSkillPool = Array.from(
+            new Set(
+              [...requiredSkills, ...roleKeywords]
+                .map((skill) => toDisplayToken(skill))
+                .filter(Boolean)
+            )
+          );
+          const expectedExperience = normalizeToken(jobTitle).includes("senior") || normalizeToken(jobTitle).includes("lead")
+            ? ["5+ Years Relevant Experience", "Leadership / Mentorship", "Architecture Ownership"]
+            : normalizeToken(jobTitle).includes("manager") || normalizeToken(jobTitle).includes("staff")
+            ? ["6+ Years Relevant Experience", "Team Leadership", "Roadmap Ownership"]
+            : ["2+ Years Relevant Experience", "Cross-functional Delivery", "Project Ownership"];
+
+          const requiredSoftSkills = buildRequiredSoftSkills(jobTitle, skillsRequired);
+          const mockResults = await Promise.all(resumeFiles.map(async (file, index) => {
+          const ext = file.name.split('.').pop()?.toLowerCase();
+          const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
+          const isUnsupported = !['pdf', 'docx', 'txt'].includes(ext || '');
+          const isTooSmall = file.size < 1000; // Less than 1KB is suspicious for a resume
+          
+          // Mock detection: If it's an image, unsupported, too small, or has a suspicious name
+          const isInvalid = isImage || isUnsupported || isTooSmall || 
+                           file.name.toLowerCase().includes('image') || 
+                           file.name.toLowerCase().includes('photo') ||
+                           file.name.toLowerCase().includes('screenshot') ||
+                           file.name.toLowerCase().includes('wallpaper');
+
+          if (isInvalid) {
+            let errorMsg = "This document format or content does not appear to be a valid resume.";
+            if (isImage) errorMsg = "This file appears to be an image. Resumes must be in DOCX, TXT, or PDF format.";
+            if (isTooSmall) errorMsg = "This file is too small to be a valid resume. Please upload a complete document.";
+            
+            return {
+              id: `cand-${index}`,
+              name: file.name,
+              atsScore: 0,
+              detailedMatcher: [],
+              feedback: "",
+              enhancements: [],
+              recommendedCourses: [],
+              isInvalid: true,
+              errorMessage: errorMsg
+            };
+          }
+
+          const resumeSignal = await readResumeSignal(file);
+          const technicalPool = baseSkillPool.length ? baseSkillPool : ["React", "TypeScript", "Node.js", "SQL"];
+          const techMatches = technicalPool.filter((skill) => hasSkillInResume(resumeSignal, skill)).slice(0, 6);
+          const techMissing = technicalPool.filter((skill) => !hasSkillInResume(resumeSignal, skill)).slice(0, 4);
+
+          const softPool = requiredSoftSkills.length
+            ? requiredSoftSkills
+            : ["Communication", "Teamwork", "Ownership", "Adaptability", "Stakeholder Management", "Critical Thinking"];
+          const detectedSoftSkills = detectSoftSkills(resumeSignal);
+          const softMatches = softPool.filter((skill) => detectedSoftSkills.includes(skill)).slice(0, 4);
+          const softMissing = softPool.filter((skill) => !softMatches.includes(skill)).slice(0, 3);
+
+          const yearsOfExperience = parseYearsOfExperience(resumeSignal);
+          const experienceSignals = [
+            { label: `${yearsOfExperience || 1}+ Years Relevant Experience`, ok: yearsOfExperience >= 1 },
+            { label: "Agile Collaboration", ok: includesPhrase(resumeSignal, "agile") || includesPhrase(resumeSignal, "scrum") },
+            { label: "Cross-functional Delivery", ok: includesPhrase(resumeSignal, "cross-functional") || includesPhrase(resumeSignal, "cross functional") },
+            { label: "Project Ownership", ok: includesPhrase(resumeSignal, "ownership") || includesPhrase(resumeSignal, "owned") },
+            { label: "Leadership / Mentorship", ok: includesPhrase(resumeSignal, "lead") || includesPhrase(resumeSignal, "mentored") },
+            { label: "Architecture Ownership", ok: includesPhrase(resumeSignal, "architecture") || includesPhrase(resumeSignal, "system design") },
+          ];
+          const expMatches = experienceSignals.filter((item) => item.ok).map((item) => item.label).slice(0, 4);
+          const expMissing = expectedExperience.filter((item) => !expMatches.some((match) => includesPhrase(match, item))).slice(0, 3);
+
+          const technicalCoverage = technicalPool.length > 0 ? techMatches.length / technicalPool.length : 0.45;
+          const technicalScore = clamp(Math.round(40 + technicalCoverage * 60), 35, 97);
+          const softCoverage = softMatches.length / softPool.length;
+          const softScore = clamp(Math.round(40 + softCoverage * 60), 35, 95);
+          const expectedYears = expectedExperience.some((item) => item.includes("6+")) ? 6 : expectedExperience.some((item) => item.includes("5+")) ? 5 : 2;
+          const yearsCoverage = clamp(yearsOfExperience / expectedYears, 0, 1.2);
+          const experienceCoverage = expectedExperience.length
+            ? expMatches.filter((match) => expectedExperience.some((item) => includesPhrase(match, item))).length / expectedExperience.length
+            : 0.5;
+          const experienceScore = clamp(
+            Math.round(35 + experienceCoverage * 45 + yearsCoverage * 20),
+            40,
+            96
+          );
+
+          const atsScore = clamp(
+            Math.round(
+              technicalScore * 0.5 +
+                softScore * 0.25 +
+                experienceScore * 0.25
+            ),
+            0,
+            98
+          );
+
+          const topGap = techMissing[0] || expMissing[0] || "Role-specific depth";
+          const secondGap = expMissing[1] || softMissing[0] || "Leadership examples";
+
+          return {
+            id: `cand-${index}`,
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            atsScore,
+            detailedMatcher: [
+              {
+                category: "Technical Skills",
+                matches: techMatches,
+                missing: techMissing.length ? techMissing : ["Advanced Tooling"],
+                score: technicalScore
+              },
+              {
+                category: "Soft Skills",
+                matches: softMatches,
+                missing: softMissing.length ? softMissing : ["Executive Communication"],
+                score: softScore
+              },
+              {
+                category: "Experience",
+                matches: expMatches,
+                missing: expMissing.length ? expMissing : ["Mentoring Experience"],
+                score: experienceScore
+              }
+            ],
+            feedback:
+              atsScore >= 85
+                ? `Strong fit for ${jobTitle}. This resume aligns well with required skills and demonstrates consistent role-relevant experience.`
+                : atsScore >= 70
+                ? `Moderate alignment for ${jobTitle}. Core strengths are present, but depth is limited in ${topGap.toLowerCase()}.`
+                : `Foundational profile for ${jobTitle}, but notable gaps exist. Prioritize improvement in ${topGap.toLowerCase()} and ${secondGap.toLowerCase()}.`,
+            enhancements: [
+              `Show measurable outcomes (e.g., performance, revenue, conversion impact).`,
+              `Add stronger evidence for ${topGap}.`,
+              `Include project examples highlighting ${secondGap}.`
+            ],
+            recommendedCourses: [
+              {
+                title: `${topGap} Fundamentals`,
+                platform: "Coursera",
+                duration: "10 Hours",
+                rating: "4.8/5"
+              },
+              {
+                title: `${jobTitle} Interview Prep`,
+                platform: "Udemy",
+                duration: "8 Hours",
+                rating: "4.7/5"
+              },
+              {
+                title: "System Design Essentials",
+                platform: "DesignGurus",
+                duration: "12 Hours",
+                rating: "4.8/5"
+              }
+            ]
+          };
+        }));
+          dispatch(completeAnalysis(mockResults));
+          if (mockResults.length > 0) {
+            setSelectedCandidateId(mockResults[0].id);
+          }
+        })();
+      }
+    }, 100);
+  };
+
+  const selectedCandidate = results.find(c => c.id === selectedCandidateId);
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-12 text-center"
+      >
+        <h2 className="text-2xl font-bold uppercase tracking-widest mb-2">Analyze & Rank</h2>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fill in job details and upload multiple resumes to compare candidates.</p>
+        <div className="mt-4 mx-auto w-full max-w-md h-1.5 rounded-full overflow-hidden bg-muted/70 border border-black/5 dark:border-white/10">
+          <motion.div
+            className="h-full w-1/2 vanish-strip"
+            animate={{ x: ["-110%", "230%"], opacity: [0, 0.95, 0] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        {/* Job Description Form */}
+        <Card className="glass rounded-2xl border border-black/5 dark:border-white/5 p-6 shadow-sm">
+          <CardHeader className="px-0 pt-0">
+            <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Job Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Job Title</label>
+              <input 
+                className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-3 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-xs font-medium" 
+                placeholder={globalMarketHints.titleExamples[0]}
+                value={jobTitle}
+                onChange={(e) => dispatch(setJobDetails({ jobTitle: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Skills Required</label>
+              <textarea 
+                className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-3 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-xs font-medium h-20" 
+                placeholder="e.g. React, TypeScript, Tailwind, Node.js"
+                value={skillsRequired}
+                onChange={(e) => dispatch(setJobDetails({ skillsRequired: e.target.value }))}
+              />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {globalMarketHints.roleSkills.map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => addSuggestedSkill(skill)}
+                    className="text-[9px] px-2 py-1 rounded-full border border-primary/25 bg-primary/10 hover:bg-primary/15 uppercase tracking-wide font-semibold"
+                  >
+                    + {skill}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Location</label>
+              <input 
+                className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-3 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-xs font-medium" 
+                placeholder="e.g. Remote / New York, NY"
+                list="global-market-locations"
+                value={location}
+                onChange={(e) => dispatch(setJobDetails({ location: e.target.value }))}
+              />
+              <datalist id="global-market-locations">
+                <option value="Remote (Global)" />
+                <option value="United States" />
+                <option value="European Union" />
+                <option value="India" />
+                <option value="Singapore" />
+                <option value="UAE" />
+                <option value="Australia" />
+              </datalist>
+            </div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                Global Market Focus: {globalMarketHints.marketFocus}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Job details are benchmarked against globally in-demand role signals and skill expectations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Multiple Resume Upload */}
+        <Card className="glass rounded-2xl border-dashed border-2 border-primary/20 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all cursor-pointer group relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+          <input 
+            type="file" 
+            multiple
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+            onChange={handleFileChange}
+          />
+          <CardContent className="flex flex-col items-center justify-center py-8 w-full">
+            <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-md shadow-primary/25">
+              <Upload className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold uppercase tracking-widest mb-2">Resumes / CVs</h3>
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Upload multiple files to compare</p>
+            <p className="text-[10px] font-semibold text-primary/90 mb-4 uppercase tracking-wider">Restricted format: DOCX, TXT, PDF | approx max 5MB each (12 files)</p>
+            
+            {resumeFiles.length > 0 ? (
+              <div className="w-full max-w-xs space-y-2 max-h-40 overflow-y-auto px-2">
+                {resumeFiles.map((file, i) => (
+                  <div key={i} className="flex items-center justify-between bg-primary/10 px-3 py-1.5 border border-primary/20">
+                    <span className="text-[10px] font-bold truncate max-w-[150px]">{file.name}</span>
+                    <Badge variant="secondary" className="rounded-none text-[8px] uppercase">{(file.size / 1024).toFixed(0)} KB</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-tighter">DOCX</Badge>
+                <Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-tighter">TXT</Badge>
+                <Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-tighter">PDF</Badge>
+              </div>
+            )}
+            {uploadError ? (
+              <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-destructive text-center">
+                {uploadError}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex justify-center mb-12">
+        <Button 
+          size="lg" 
+          className="px-12 rounded-full h-12 text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/25 hover:-translate-y-0.5 transition-all"
+          disabled={!jobTitle || !skillsRequired || resumeFiles.length === 0 || isAnalyzing}
+          onClick={handleAnalyze}
+        >
+          {isAnalyzing ? "Analyzing..." : `Analyze ${resumeFiles.length > 0 ? resumeFiles.length : ''} Resumes`}
+        </Button>
+      </div>
+
+      {isAnalyzing && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[120] bg-black text-white flex flex-col items-center justify-center"
+        >
+          <motion.div
+            className="h-3 w-20 rounded-sm bg-white mb-28"
+            animate={{ opacity: [0.35, 1, 0.35], scaleX: [0.9, 1.05, 0.9] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div className="absolute bottom-10 w-full max-w-xs px-6 text-center">
+            <p className="text-5xl font-black tracking-tight mb-3">{progress}%</p>
+            <Progress value={progress} className="h-1.5 bg-white/20" />
+            <p className="mt-3 text-[10px] uppercase tracking-widest text-white/80">
+              Parsing {resumeFiles.length} resume(s)
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {results.length > 0 && (
+        <div className="space-y-8">
+          {/* Candidate Selector / Ranking */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {resumeFiles.map((candidate) => {
+              const result = results.find(r => r.name === candidate.name.replace(/\.[^/.]+$/, "") || r.name === candidate.name);
+              const isInvalid = result?.isInvalid;
+              
+              return (
+                <Card 
+                  key={candidate.name}
+                  onClick={() => {
+                    const res = results.find(r => r.name === candidate.name.replace(/\.[^/.]+$/, "") || r.name === candidate.name);
+                    if (res) setSelectedCandidateId(res.id);
+                  }}
+                  className={cn(
+                    "glass rounded-xl cursor-pointer transition-all border-l-4 hover:shadow-md",
+                    selectedCandidateId === results.find(r => r.name === candidate.name.replace(/\.[^/.]+$/, "") || r.name === candidate.name)?.id 
+                      ? "border-primary bg-primary/5" 
+                      : "border-transparent hover:border-primary/50",
+                    isInvalid && "opacity-70 grayscale"
+                  )}
+                >
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-widest truncate">{candidate.name}</p>
+                      <p className="text-[9px] text-muted-foreground font-medium uppercase">
+                        {isInvalid ? "Invalid Document" : `ATS Score: ${result?.atsScore}%`}
+                      </p>
+                    </div>
+                    <div className={cn("font-black text-xl", isInvalid ? "text-destructive" : "text-primary")}>
+                      {isInvalid ? "!" : result?.atsScore}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {selectedCandidate && (
+            <motion.div
+              key={selectedCandidate.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              {selectedCandidate.isInvalid ? (
+                <Card className="glass rounded-none border-destructive/50 bg-destructive/5 p-12 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <AlertCircle className="w-12 h-12 text-destructive" />
+                    <h3 className="text-xl font-bold uppercase tracking-widest">Not a Resume</h3>
+                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                      {selectedCandidate.errorMessage}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-4">
+                      Please upload a valid DOCX, TXT, or PDF resume file.
+                    </p>
+                  </div>
+                </Card>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* ATS Score & Pie Chart Card */}
+                    <Card className="glass rounded-2xl lg:col-span-2 border-primary/20 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="uppercase tracking-widest text-sm flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-primary" />
+                          Analysis Overview
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center pb-8">
+                        <div className="flex flex-col items-center justify-center border-r border-black/5 dark:border-white/5 pr-0 md:pr-8">
+                          <div className="relative w-40 h-40 flex items-center justify-center mb-4">
+                            <svg className="w-full h-full transform -rotate-90">
+                              <circle
+                                cx="80"
+                                cy="80"
+                                r="74"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                className="text-muted/20"
+                              />
+                              <circle
+                                cx="80"
+                                cy="80"
+                                r="74"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="transparent"
+                                strokeDasharray={464.7}
+                                strokeDashoffset={464.7 - (464.7 * selectedCandidate.atsScore) / 100}
+                                className="text-primary transition-all duration-1000 ease-out"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className="text-5xl font-black tracking-tighter leading-none">{selectedCandidate.atsScore}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">ATS Score</span>
+                            </div>
+                          </div>
+                            <Badge className="rounded-full bg-primary text-primary-foreground uppercase tracking-widest text-[10px] px-4">
+                            {getAtsRating(selectedCandidate.atsScore).label}
+                          </Badge>
+                          <div className="mt-4 w-full max-w-xs rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-2">
+                              ATS Rating Standards
+                            </p>
+                            <div className="space-y-1.5">
+                              {atsStandards.map((standard) => (
+                                <div key={standard.min} className="flex items-start justify-between gap-2 text-[9px] uppercase">
+                                  <span className="font-bold tracking-wide">{standard.min}+</span>
+                                  <span className="text-right font-semibold text-muted-foreground">
+                                    {standard.label} - {standard.note}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-[280px] w-full relative">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-center mb-4 text-primary">Skill Proficiency Breakdown</p>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={selectedCandidate.detailedMatcher.map((d) => ({ name: d.category, value: d.score }))}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={70}
+                                outerRadius={90}
+                                paddingAngle={8}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {selectedCandidate.detailedMatcher.map((entry, index) => {
+                                  const colors = [
+                                    "#6EA8FE",
+                                    "#7DD3FC",
+                                    "#A78BFA"
+                                  ];
+                                  return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} className="hover:opacity-80 transition-opacity cursor-pointer" />;
+                                })}
+                              </Pie>
+                              <Tooltip 
+                                cursor={{ fill: 'transparent' }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    return (
+                                      <div className="glass p-3 border border-primary/20 shadow-xl">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">{payload[0].name}</p>
+                                        <p className="text-[10px] font-bold uppercase">{payload[0].value}% Score</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Legend 
+                                verticalAlign="bottom" 
+                                height={36}
+                                iconType="square"
+                                wrapperStyle={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '900', letterSpacing: '0.05em', paddingTop: '20px' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          {/* Center Label */}
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                            <span className="block text-2xl font-black leading-none">
+                              {selectedCandidate.detailedMatcher.reduce((acc, curr) => acc + curr.matches.length, 0)}
+                            </span>
+                            <span className="block text-[8px] font-bold uppercase tracking-tighter text-muted-foreground">Total Skills</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="glass rounded-2xl lg:col-span-1">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 uppercase tracking-widest text-sm">
+                          <CheckCircle2 className="text-primary w-5 h-5" />
+                          Detailed Job Matcher
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {selectedCandidate.detailedMatcher.map((detail, idx) => (
+                          <div key={idx} className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">{detail.category}</h4>
+                              <span className="text-[10px] font-black">{detail.score}%</span>
+                            </div>
+                            <Progress value={detail.score} className="h-0.5 rounded-none" />
+                            <div className="flex flex-wrap gap-1.5">
+                              {detail.matches.length > 0 ? (
+                                detail.matches.map((m, i) => (
+                                  <Badge key={i} variant="secondary" className="rounded-none text-[8px] uppercase px-2 py-0">+{m}</Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline" className="rounded-none text-[8px] uppercase px-2 py-0 text-muted-foreground">
+                                  No strong match found
+                                </Badge>
+                              )}
+                              {detail.missing.map((m, i) => (
+                                <Badge key={i} variant="outline" className="rounded-none text-[8px] uppercase px-2 py-0 text-muted-foreground">-{m}</Badge>
+                              ))}
+                            </div>
+                            {idx < selectedCandidate.detailedMatcher.length - 1 && <Separator className="opacity-50" />}
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <Card className="glass rounded-2xl border-primary/10">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 uppercase tracking-widest text-sm">
+                          <MessageSquare className="text-primary w-5 h-5" />
+                          AI Feedback
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-xs font-medium leading-relaxed text-muted-foreground italic">
+                          "{selectedCandidate.feedback}"
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="glass rounded-2xl border-primary/10">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 uppercase tracking-widest text-sm">
+                          <Sparkles className="text-primary w-5 h-5" />
+                          Enhance Resume
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {selectedCandidate.enhancements.map((tip, i) => (
+                            <li key={i} className="flex items-start gap-2 text-[10px] font-medium">
+                              <div className="mt-1 w-1 h-1 bg-primary shrink-0" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card className="glass rounded-2xl border-primary/10">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 uppercase tracking-widest text-sm">
+                        <BookOpen className="text-primary w-5 h-5" />
+                        Recommended Courses
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {selectedCandidate.recommendedCourses.map((course, i) => (
+                          <div key={i} className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 flex flex-col justify-between hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-tight leading-tight mb-1">{course.title}</p>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-medium text-muted-foreground uppercase">{course.platform}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[8px] font-bold text-primary">{course.duration}</span>
+                                  <span className="text-[8px] font-bold text-yellow-500">★ {course.rating}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="link" 
+                              className="p-0 h-auto text-[9px] uppercase tracking-widest mt-3 justify-start"
+                              onClick={() => handleViewCourse('https://internshala.com/')}
+                            >
+                              View Course →
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      <ConfirmationModal 
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmRedirect}
+        message="We are directed to third party. Do you want to continue?"
+      />
+    </div>
+  );
+}
+
+// --- About Page ---
+export function About() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-20">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="space-y-12"
+      >
+        <section>
+          <h2 className="text-4xl font-black mb-6 uppercase tracking-tighter">How it works</h2>
+          <p className="text-base text-muted-foreground leading-relaxed font-medium">
+            Our system uses state-of-the-art Natural Language Processing (NLP) to bridge the gap between 
+            talent and opportunity. We don't just look for keywords; we understand context, seniority, and domain expertise.
+          </p>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { title: "NLP Parsing", desc: "Deep semantic analysis of unstructured resume text to extract entities and skills." },
+            { title: "Smart Matching", desc: "Multi-dimensional scoring algorithm that weights experience, education, and specific tech stacks." },
+            { title: "Ranking", desc: "Automated candidate prioritization based on custom job description requirements." }
+          ].map((item, i) => (
+            <div key={i} className="space-y-3">
+              <div className="text-primary font-black text-3xl">0{i+1}</div>
+              <h3 className="font-bold text-sm uppercase tracking-widest">{item.title}</h3>
+              <p className="text-muted-foreground text-xs font-medium leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <Card className="glass p-8 rounded-2xl border-primary/10">
+          <h3 className="text-xl font-bold mb-4 uppercase tracking-widest">Our Mission</h3>
+          <p className="text-muted-foreground italic font-medium">
+            "To eliminate bias and inefficiency in the hiring process by providing recruiters with 
+            objective, data-driven insights into candidate suitability."
+          </p>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
+
+// --- Contact Page ---
+export function Contact() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-20">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h2 className="text-4xl font-black mb-6 uppercase tracking-tighter">Get in Touch</h2>
+          <p className="text-muted-foreground mb-8 font-medium text-sm">
+            Have questions or want to integrate our API? Our team is ready to help you scale your hiring process.
+          </p>
+          
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-none bg-primary flex items-center justify-center text-primary-foreground">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest">Email</p>
+                <p className="text-muted-foreground text-sm font-medium">hello@intelliscreen.ai</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-none bg-primary flex items-center justify-center text-primary-foreground">
+                <Github className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest">GitHub</p>
+                <p className="text-muted-foreground text-sm font-medium">github.com/hackathon-innovators</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-none bg-primary flex items-center justify-center text-primary-foreground">
+                <Globe className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest">Team</p>
+                <p className="text-muted-foreground text-sm font-medium">Hackathon Innovators</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <Card className="glass p-8 rounded-2xl shadow-sm">
+          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest">Name</label>
+              <input className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-4 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-sm" placeholder="John Doe" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest">Email</label>
+              <input className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-4 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-sm" placeholder="john@example.com" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest">Message</label>
+              <textarea className="w-full bg-background/50 border border-black/10 dark:border-white/10 rounded-none px-4 py-2 focus:ring-1 focus:ring-primary outline-none transition-all text-sm h-32" placeholder="Tell us about your needs..." />
+            </div>
+            <Button className="w-full rounded-full h-11 font-bold uppercase tracking-widest text-[10px] shadow-md shadow-primary/20">Send Message</Button>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// --- Footer ---
+export function Footer() {
+  return (
+    <footer className="w-full py-12 px-6 border-t border-black/5 dark:border-white/5 glass mt-20">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+        <div className="flex items-center gap-2">
+          <Zap className="text-primary w-5 h-5" />
+          <span className="font-black text-lg uppercase tracking-tighter">IntelliScreen</span>
+        </div>
+        
+        <div className="flex gap-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
+          <a href="#" className="hover:text-primary transition-colors">API Docs</a>
+        </div>
+
+        <div className="flex gap-4">
+          <Button variant="ghost" size="icon" className="rounded-none hover:bg-primary hover:text-primary-foreground">
+            <Linkedin className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-none hover:bg-primary hover:text-primary-foreground">
+            <Github className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+    </footer>
+  );
+}
